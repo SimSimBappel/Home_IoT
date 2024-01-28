@@ -1,0 +1,5 @@
+.*
+!/.gitignore
+**/secrets/
+**/test/
+**/include/
