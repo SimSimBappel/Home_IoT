@@ -25,12 +25,13 @@ const int blue_led = 5; //need to use ADC1 pins ONLY
 const int PIR = 21;
 const int photoresistor = 34; //need to use ADC1 pins ONLY
 
-unsigned long timer = 0;
+unsigned long timer1 = 0;
 unsigned long timer2 = 0;
-int waitformotion = 10000;
+int waitformotion = 5000; // change to 
 bool light_state = false;
 bool PIR_state = false;
 
+bool fading = false;
 
 void setup_wifi();
 void connect_mqttServer();
@@ -63,36 +64,49 @@ void loop() {
   client.loop();
   ArduinoOTA.handle();
 
-  Serial.print(digitalRead(PIR));
-  Serial.print(" ");
-  Serial.println(analogRead(photoresistor));
-
-  if(digitalRead(PIR)){
-    timer2 = millis();
-    if(!PIR_state){
-      client.publish("koekken/motionsensor", "motion_detected");
-      PIR_state = true;
-    }
+  if(timer1 > millis()){
+    timer1 = 0;
   }
-  else if(!digitalRead(PIR) && PIR_state && millis() - timer2 > waitformotion){
-    PIR_state = false;
-    client.publish("koekken/motionsensor", "no motion (30s)");
+  if(timer2 > millis()){
+    timer2 = 0;
   }
 
-  if(digitalRead(PIR) && analogRead(photoresistor) < 100){
-    light_state = fade_light(true, light_state, 3.0, red_led, green_led, blue_led);
+  // if(digitalRead(PIR)){
+  //   timer2 = millis();
+  //   if(!PIR_state){
+  //     client.publish("koekken/motionsensor", "motion_detected");
+  //     PIR_state = true;
+  //   }
+  // }
+  // else if(PIR_state && millis() - timer2 > waitformotion){
+  //   PIR_state = false;
+  //   client.publish("koekken/motionsensor", "no motion (30s)");
+  // }
+
+  if(fading){
+    light_feedback result = fade_light(light_state, 3.0, red_led, green_led, blue_led);
+  
+    light_state = result.light_state;
+    fading = result.fading;
+  }
+  else if(digitalRead(PIR) && analogRead(photoresistor) < 100){
+    fading = true;
     Serial.println("turn on");
-    timer = millis();
+    timer1 = millis();
+    // light_state = fade_light(true, light_state, 3.0, red_led, green_led, blue_led);
   }
-  else if(millis() - timer > waitformotion && light_state){
-    // fade_light(false, 3.0);
+  else if(millis() - timer1 > waitformotion && light_state){
+    fading = true;
     Serial.println("turn off");
-    light_state = fade_light(false, light_state, 3.0, red_led, green_led, blue_led);
+    // light_state = fade_light(false, light_state, 3.0, red_led, green_led, blue_led);
   }
   else{
     delay(100); //microcontroller sleep
   }
+
 }
+
+
 
 
 
@@ -172,16 +186,14 @@ void callback(char* topic, byte* message, unsigned int length) {
     case 100:
       Serial.println("light on");
       digitalWrite(ledPin, HIGH);
-      // fade_light(true, 0.0);
-      fade_light(true, light_state, 3.0, red_led, green_led, blue_led);
+      light_state = switch_light(true, red_led, green_led, blue_led);
       client.publish("koekken/light","light on");
       break;
 
     case 0:
       Serial.println("light off");
       digitalWrite(ledPin, LOW);
-      // fade_light(false, 0.0);
-      fade_light(false, light_state, 3.0, red_led, green_led, blue_led);
+      light_state = switch_light(false, red_led, green_led, blue_led);
       client.publish("koekken/light","light off");
       break;
 
