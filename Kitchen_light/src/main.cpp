@@ -90,7 +90,7 @@ void loop() {
     light_state = fade_light(false, light_state, 3.0, red_led, green_led, blue_led);
   }
   else{
-    delay(100);
+    delay(100); //microcontroller sleep
   }
 }
 

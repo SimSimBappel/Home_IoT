@@ -1,3 +1,5 @@
+#include "light_control.h"
+
 bool fade_light(bool state, bool light_state, float time, int red_led, int green_led, int blue_led){
   if(light_state == state){
     return light_state;
@@ -62,7 +64,8 @@ bool fade_light_semiblocking(bool state, bool light_state, float time, int red_l
   return light_state;
 }
 
-void blink_led(u_int8_t pin, unsigned int times, unsigned int duration){
+
+void blink_led(int pin, unsigned int times, unsigned int duration){
   for (int i = 0; i < times; i++) {
     digitalWrite(pin, HIGH);
     delay(duration);
