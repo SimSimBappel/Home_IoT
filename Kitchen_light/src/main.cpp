@@ -19,15 +19,15 @@ IPAddress subnet(255, 255, 0, 0);
 PubSubClient client(espClient);
 
 const int ledPin = 2;
-const int red_led = 19; //need to use ADC1 pins ONLY
-const int green_led = 18; //need to use ADC1 pins ONLY
-const int blue_led = 5; //need to use ADC1 pins ONLY
-const int PIR = 21;
-const int photoresistor = 34; //need to use ADC1 pins ONLY
+const int red_led = 16; 
+const int green_led = 17;
+const int blue_led = 18; 
+const int PIR = 35;
+const int photoresistor = 33; //need to use ADC1 pins ONLY
 
 unsigned long timer1 = 0;
 unsigned long timer2 = 0;
-int waitformotion = 5000; // change to 
+int waitformotion = 30000; 
 bool light_state = false;
 bool PIR_state = false;
 
@@ -49,6 +49,7 @@ void setup() {
   digitalWrite(red_led, LOW);
   digitalWrite(green_led, LOW);
   digitalWrite(blue_led, LOW);
+ 
 
   setup_wifi();
   ArduinoOTA.setPassword("admin"); 
@@ -71,37 +72,40 @@ void loop() {
     timer2 = 0;
   }
 
-  // if(digitalRead(PIR)){
-  //   timer2 = millis();
-  //   if(!PIR_state){
-  //     client.publish("koekken/motionsensor", "motion_detected");
-  //     PIR_state = true;
-  //   }
-  // }
-  // else if(PIR_state && millis() - timer2 > waitformotion){
-  //   PIR_state = false;
-  //   client.publish("koekken/motionsensor", "no motion (30s)");
-  // }
+  // int analogValue = analogRead(photoresistor);
+  // char msg[10];
+  // sprintf(msg, "%d", analogValue);
+  // client.publish("koekken/LDRsensor", msg);
+
+  if(digitalRead(PIR)){
+    timer2 = millis();
+    if(!PIR_state){
+      client.publish("koekken/PIRsensor", "motion_detected");
+      PIR_state = true;
+    }
+  }
+  else if(PIR_state && millis() - timer2 > waitformotion){
+    PIR_state = false;
+    client.publish("koekken/motionsensor", "no motion (30s)");
+  }
+
 
   if(fading){
     light_feedback result = fade_light(light_state, 3.0, red_led, green_led, blue_led);
-  
     light_state = result.light_state;
     fading = result.fading;
   }
-  else if(digitalRead(PIR) && analogRead(photoresistor) < 100){
+  else if(digitalRead(PIR) && analogRead(photoresistor) < 60){
     fading = true;
-    Serial.println("turn on");
+    // Serial.println("turn on");
     timer1 = millis();
-    // light_state = fade_light(true, light_state, 3.0, red_led, green_led, blue_led);
   }
   else if(millis() - timer1 > waitformotion && light_state){
     fading = true;
-    Serial.println("turn off");
-    // light_state = fade_light(false, light_state, 3.0, red_led, green_led, blue_led);
+    // Serial.println("turn off");
   }
   else{
-    delay(100); //microcontroller sleep
+    delay(100); //TODO microcontroller sleep
   }
 
 }
