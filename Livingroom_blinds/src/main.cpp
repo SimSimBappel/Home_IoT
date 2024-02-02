@@ -22,10 +22,11 @@ long lastMsg = 0;
 #define ledPin 2
 
 Servo myservo;
+const int servo_relay_pin = 13;
 const int open_pos = 180;
 const int neutral_pos = 90;
 const int close_pos = 0;
-const int swing_time = 400;
+const int swing_time = 500;
 
 void blink_led(unsigned int, unsigned int);
 void setup_wifi();
@@ -35,9 +36,9 @@ void callback(char*, byte*, unsigned int);
 
 void setup() {
   pinMode(ledPin, OUTPUT);
-  pinMode(13, OUTPUT);
+  pinMode(servo_relay_pin, OUTPUT);
   pinMode(12, OUTPUT);
-  pinMode(15, INPUT_PULLDOWN);
+  // pinMode(15, INPUT_PULLDOWN);
   Serial.begin(115200);
   
   ESP32PWM::allocateTimer(0);
@@ -58,6 +59,8 @@ void loop() {
   client.loop();
   ArduinoOTA.handle();
 
+  
+
   // if(digitalRead(15)){
   //   motion = true;
   //   client.publish("stue/motionsensor", "motion Detected!"); 
@@ -65,11 +68,18 @@ void loop() {
   // }
 
 
-  long now = millis();
+  unsigned long now = millis();
   if (now - lastMsg > 1000) {
     lastMsg = now;
   }
-  delay(200); 
+
+
+  if (lastMsg > millis()){
+    lastMsg = millis();
+  }
+
+
+  delay(100);   
 }
 
 
@@ -123,7 +133,7 @@ void connect_mqttServer() {
         if (client.connect("livingroom_client")) { // Change the name of client here if multiple ESP32 are connected
           //attempt successful
           Serial.println("connected");
-          client.subscribe("stue/blind_pos");
+          client.subscribe("stue/set_blind_pos");
         } 
         else {
           //attempt not successful
@@ -170,45 +180,49 @@ void callback(char* topic, byte* message, unsigned int length) {
     case 25:
       // Serial.println("open blinds");
       client.publish("stue/get_blind_pos","25");
-      digitalWrite(13, HIGH);
+      digitalWrite(servo_relay_pin, HIGH);
+      delay(500);
       myservo.write(open_pos);
       delay(1500);
       myservo.write(neutral_pos);
       delay(swing_time);
-      digitalWrite(13, LOW);
+      digitalWrite(servo_relay_pin, LOW);
       break;
 
     case 1:
       // Serial.println("close blinds");
       client.publish("stue/get_blind_pos","1");
-      digitalWrite(13, HIGH);
+      digitalWrite(servo_relay_pin, HIGH);
+      delay(500);
       myservo.write(close_pos);
       delay(1500);
       myservo.write(neutral_pos);
       delay(swing_time);
-      digitalWrite(13, LOW);
+      digitalWrite(servo_relay_pin, LOW);
       break;
 
     case 100:
       // Serial.println("blinds up");
       client.publish("stue/get_blind_pos","100");
-      digitalWrite(13, HIGH);
+      digitalWrite(servo_relay_pin, HIGH);
+      delay(500);
       myservo.write(open_pos);
       delay(70000);
       myservo.write(neutral_pos);
       delay(swing_time);
-      digitalWrite(13, LOW);
+      digitalWrite(servo_relay_pin, LOW);
       break;
 
     case 0:
-      // Serial.println("blinds up");
+      // Serial.println("blinds down");
       client.publish("stue/get_blind_pos","0");
-      digitalWrite(13, HIGH);
+      digitalWrite(servo_relay_pin, HIGH);
+      delay(500);
       myservo.write(close_pos);
       delay(70000);
       myservo.write(neutral_pos);
       delay(swing_time);
-      digitalWrite(13, LOW);
+      digitalWrite(servo_relay_pin, LOW);
       break;
 
 
@@ -216,14 +230,15 @@ void callback(char* topic, byte* message, unsigned int length) {
       Serial.println("error!");
       blink_led(5, 300);
       Serial.println("wrong value");
-      digitalWrite(13, HIGH);
+      digitalWrite(servo_relay_pin, HIGH);
+      delay(500);
       myservo.write(close_pos);
       delay(100);
       myservo.write(open_pos);
       delay(100);
       myservo.write(neutral_pos);
       delay(swing_time);
-      digitalWrite(13, LOW);
+      digitalWrite(servo_relay_pin, LOW);
       client.publish("stue/blinds_error", "1");
       break;
   }

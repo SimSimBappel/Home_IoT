@@ -27,7 +27,7 @@ const int photoresistor = 33; //need to use ADC1 pins ONLY
 
 unsigned long timer1 = 0;
 unsigned long timer2 = 0;
-int waitformotion = 30000; 
+const int waitformotion = 30000; 
 bool light_state = false;
 bool PIR_state = false;
 
@@ -65,6 +65,7 @@ void loop() {
   client.loop();
   ArduinoOTA.handle();
 
+  //reset timers at rollover
   if(timer1 > millis()){
     timer1 = 0;
   }
@@ -72,10 +73,10 @@ void loop() {
     timer2 = 0;
   }
 
-  // int analogValue = analogRead(photoresistor);
-  // char msg[10];
-  // sprintf(msg, "%d", analogValue);
-  // client.publish("koekken/LDRsensor", msg);
+  int analogValue = analogRead(photoresistor);
+  char msg[10];
+  sprintf(msg, "%d", analogValue);
+  client.publish("koekken/LDRsensor", msg);
 
   if(digitalRead(PIR)){
     timer2 = millis();
@@ -86,7 +87,7 @@ void loop() {
   }
   else if(PIR_state && millis() - timer2 > waitformotion){
     PIR_state = false;
-    client.publish("koekken/motionsensor", "no motion (30s)");
+    client.publish("koekken/PIRsensor", "no motion (30s)");
   }
 
 
@@ -95,9 +96,12 @@ void loop() {
     light_state = result.light_state;
     fading = result.fading;
   }
-  else if(digitalRead(PIR) && analogRead(photoresistor) < 60){
+  else if(digitalRead(PIR) && analogRead(photoresistor) < 30){
     fading = true;
     // Serial.println("turn on");
+    timer1 = millis();
+  }
+  else if(light_state && digitalRead(PIR)){
     timer1 = millis();
   }
   else if(millis() - timer1 > waitformotion && light_state){
@@ -187,7 +191,7 @@ void callback(char* topic, byte* message, unsigned int length) {
   Serial.println(intValue);
 
   switch (intValue) {
-    case 100:
+    case 1:
       Serial.println("light on");
       digitalWrite(ledPin, HIGH);
       light_state = switch_light(true, red_led, green_led, blue_led);
@@ -199,16 +203,6 @@ void callback(char* topic, byte* message, unsigned int length) {
       digitalWrite(ledPin, LOW);
       light_state = switch_light(false, red_led, green_led, blue_led);
       client.publish("koekken/light","light off");
-      break;
-
-    case 25:
-      // Serial.println("open blinds");
-      client.publish("koekken/","25");
-      break;
-
-    case 1:
-      // Serial.println("close blinds");
-      client.publish("koekken/","1");
       break;
 
     default:
