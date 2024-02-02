@@ -4,10 +4,10 @@ Using Homebridge on a raspberry pi to recive commands from siri, and send said c
 
 ## TODO
 - [ ] Make the blinds actuation non-blocking.
-- [ ] Send PIR data to raspberry pi.
+- [x] Send PIR data to raspberry pi.
 - [ ] Decrease power consumption.
 - [ ] Fix jittering servo.
-- [ ] Open blinds when wind speeds exceed Xm/s.
+- [x] Open blinds when wind speeds exceed Xm/s.
 - [ ] Sync blinds with calendar.
  
 - [x] Make the light fading non-blocking.
