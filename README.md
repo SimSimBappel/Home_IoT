@@ -7,7 +7,7 @@ Using Homebridge on a raspberry pi to recive commands from siri, and send said c
 - [x] Send PIR data to raspberry pi.
 - [ ] Decrease power consumption.
 - [ ] Fix jittering servo.
-- [ ] Open blinds when wind speeds exceed Xm/s.
+- [x] Open blinds when wind speeds exceed Xm/s.
 - [ ] Sync blinds with calendar.
 - [ ] Add color temperature scaling.
  
