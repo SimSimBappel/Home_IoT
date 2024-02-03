@@ -2,7 +2,7 @@ import requests
 import logging
 from secrets.secrets import api_key, lat, lon
 
-logging.basicConfig(filename = 'weather_log.txt', level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename = 'weather_log.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 url = f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}'
