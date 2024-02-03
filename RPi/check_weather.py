@@ -1,15 +1,17 @@
 import requests
 import logging
 from secrets.secrets import api_key, lat, lon
+import paho.mqtt.client as mqtt
 
 logging.basicConfig(filename = '/home/pi/simon/code/Home_IoT/RPi/weather_log.txt', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-logging.basicConfig.fileConfig('logging.config',
-                            defaults={'weather_log.txt': '/home/pi/simon/code/Home_IoT/RPi/'})
-
-
 url = f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}'
+
+
+client = mqtt.Client("rpi_weather_client") #this name should be unique
+client.connect('192.168.1.100',1883)
+client.loop_start()
 
 
 def open_blinds():
@@ -36,7 +38,7 @@ if response.status_code == 200:
     wind_speed = data['wind']['speed']
     # print(f'Wind speed: {wind_speed} m/s')
     logging.info(f' Wind speed: {wind_speed} m/s')
-    if wind_speed > 10:
+    if wind_speed > 15:
         open_blinds()
         
 else:
