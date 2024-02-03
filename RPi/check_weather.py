@@ -32,7 +32,7 @@ if response.status_code == 200:
     wind_speed = data['wind']['speed']
     # print(f'Wind speed: {wind_speed} m/s')
     logging.info(f' Wind speed: {wind_speed} m/s')
-    if wind_speed > 15:
+    if wind_speed > 10:
         open_blinds()
         
 else:
