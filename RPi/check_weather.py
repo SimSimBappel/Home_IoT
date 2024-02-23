@@ -64,16 +64,22 @@ def open_blinds(wind_speed):
         logging.error(f' Wind speed: {wind_speed} m/s, {e}')
 
 
-response = requests.get(url)
+def main():
+    response = requests.get(url)
 
-if response.status_code == 200:
-    data = response.json()
-    wind_speed = data['wind']['speed']
-    if wind_speed > 15:
-        open_blinds(wind_speed)
+    if response.status_code == 200:
+        data = response.json()
+        wind_speed = data['wind']['speed']
+        if wind_speed > 12:
+            open_blinds(wind_speed)
+        else:
+            logging.info(f' Wind speed: {wind_speed} m/s')
+            
     else:
-        logging.info(f' Wind speed: {wind_speed} m/s')
-        
-else:
-    error_message = f"Failed to retrieve weather data. Status code: {response.status_code}"
-    logging.error(error_message)
+        error_message = f"Failed to retrieve weather data. Status code: {response.status_code}"
+        logging.error(error_message)
+
+
+
+if __name__ == "__main__":
+    main()
