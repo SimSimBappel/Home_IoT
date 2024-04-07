@@ -55,13 +55,17 @@ def open_blinds(wind_speed):
             payload=msg.encode('utf-8'),
             qos=0,
         )
+        pubMsg = client.publish(
+            topic='sove/set_blind_pos',
+            payload=msg.encode('utf-8'),
+            qos=0,
+        )
     
         pubMsg.wait_for_publish()
-        logging.info(f' Wind speed: {wind_speed} m/s, Blinds opened!')
+        logger.info(f' Wind speed: {wind_speed} m/s, Blinds opened!')
 
     except Exception as e:
-        # print(e)
-        logging.error(f' Wind speed: {wind_speed} m/s, {e}')
+        logger.error(f' Wind speed: {wind_speed} m/s, ERROR {e}')
 
 
 def main():
@@ -73,11 +77,12 @@ def main():
         if wind_speed > 12:
             open_blinds(wind_speed)
         else:
-            logging.info(f' Wind speed: {wind_speed} m/s')
+            print(f'windspeed: {wind_speed} m/s')
+            logger.info(f' Wind speed: {wind_speed} m/s')
             
     else:
         error_message = f"Failed to retrieve weather data. Status code: {response.status_code}"
-        logging.error(error_message)
+        logger.error(error_message)
 
 
 
