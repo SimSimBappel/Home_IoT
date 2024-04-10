@@ -17,16 +17,24 @@ IPAddress subnet(255, 255, 0, 0);
 
 PubSubClient client(espClient);
 
-bool motion = false;
-long lastMsg = 0;
+enum class states 
+{   down, 
+    closed, 
+    opened,
+    up,
+} blind_state; 
+
+long actuation_time = 0;
+unsigned long lastMsg_time = 0;
 #define ledPin 2
+#define servo_relay_pin 13
 
 Servo myservo;
-const int servo_relay_pin = 13;
-const int open_pos = 180;
+const int open_pos = 140;
 const int neutral_pos = 90;
-const int close_pos = 0;
+const int close_pos = 40;
 const int swing_time = 500;
+
 
 void blink_led(unsigned int, unsigned int);
 void setup_wifi();
@@ -53,32 +61,21 @@ void setup() {
 }
 
 void loop() {
-  if (!client.connected()) {
-    connect_mqttServer();
-  }
+  if (!client.connected()) {connect_mqttServer();}
   client.loop();
   ArduinoOTA.handle();
-
-  
-
-  // if(digitalRead(15)){
-  //   motion = true;
-  //   client.publish("stue/motionsensor", "motion Detected!"); 
-  //   Serial.println("published motion!");
-  // }
-
-
   unsigned long now = millis();
-  if (now - lastMsg > 1000) {
-    lastMsg = now;
+ 
+  
+  if(now > actuation_time+lastMsg_time){
+    myservo.write(neutral_pos);
+    delay(swing_time);
+    digitalWrite(servo_relay_pin, LOW);
   }
-
-
-  if (lastMsg > millis()){
-    lastMsg = millis();
+    
+  if (lastMsg_time > millis()){
+    lastMsg_time = millis();
   }
-
-
   delay(100);   
 }
 
@@ -150,20 +147,19 @@ void connect_mqttServer() {
 
 //this function will be executed whenever there is data available on subscribed topics
 void callback(char* topic, byte* message, unsigned int length) {
-  Serial.print("Message arrived on topic: ");
-  Serial.print(topic);
-  Serial.print(". Message: ");
+  // Serial.print("Message arrived on topic: ");
+  // Serial.print(topic);
+  // Serial.print(". Message: ");
   String messageTemp;
   
   for (int i = 0; i < length; i++) {
-    Serial.print((char)message[i]);
+    // Serial.print((char)message[i]);
     messageTemp += (char)message[i];
   }
-  Serial.println();
+  // Serial.println();
 
   int intValue = messageTemp.toInt();
 
-  Serial.println(intValue);
   switch (intValue) {
     case 12:
       Serial.println("light on");
@@ -179,38 +175,48 @@ void callback(char* topic, byte* message, unsigned int length) {
 
     case 25:
       // Serial.println("open blinds");
-      client.publish("stue/get_blind_pos","25");
+      // client.publish("stue/get_blind_pos","25");
       digitalWrite(servo_relay_pin, HIGH);
       delay(500);
       myservo.write(open_pos);
-      delay(1500);
-      myservo.write(neutral_pos);
-      delay(swing_time);
-      digitalWrite(servo_relay_pin, LOW);
+      actuation_time = 1500;
+      lastMsg_time = millis();
+      blind_state = states::opened;
+      // delay(1500);
+      // myservo.write(neutral_pos);
+      // delay(swing_time);
+      // digitalWrite(servo_relay_pin, LOW);
       break;
 
     case 1:
       // Serial.println("close blinds");
       client.publish("stue/get_blind_pos","1");
       digitalWrite(servo_relay_pin, HIGH);
-      delay(500);
-      myservo.write(close_pos);
-      delay(1500);
-      myservo.write(neutral_pos);
       delay(swing_time);
-      digitalWrite(servo_relay_pin, LOW);
+      myservo.write(close_pos);
+      actuation_time = 1500;
+      lastMsg_time = millis();
+      blind_state = states::closed;
+      // delay(1500);
+      // myservo.write(neutral_pos);
+      // delay(swing_time);
+      // digitalWrite(servo_relay_pin, LOW);
       break;
 
     case 100:
       // Serial.println("blinds up");
+      if(blind_state==states::up){break;}
       client.publish("stue/get_blind_pos","100");
       digitalWrite(servo_relay_pin, HIGH);
       delay(500);
       myservo.write(open_pos);
-      delay(70000);
-      myservo.write(neutral_pos);
-      delay(swing_time);
-      digitalWrite(servo_relay_pin, LOW);
+      actuation_time = 70000;
+      lastMsg_time = millis();
+      blind_state = states::up;
+      // delay(70000);
+      // myservo.write(neutral_pos);
+      // delay(swing_time);
+      // digitalWrite(servo_relay_pin, LOW);
       break;
 
     case 0:
@@ -219,10 +225,13 @@ void callback(char* topic, byte* message, unsigned int length) {
       digitalWrite(servo_relay_pin, HIGH);
       delay(500);
       myservo.write(close_pos);
-      delay(70000);
-      myservo.write(neutral_pos);
-      delay(swing_time);
-      digitalWrite(servo_relay_pin, LOW);
+      actuation_time = 70000;
+      lastMsg_time = millis();
+      blind_state = states::down;
+      // delay(70000);
+      // myservo.write(neutral_pos);
+      // delay(swing_time);
+      // digitalWrite(servo_relay_pin, LOW);
       break;
 
 
@@ -239,7 +248,8 @@ void callback(char* topic, byte* message, unsigned int length) {
       myservo.write(neutral_pos);
       delay(swing_time);
       digitalWrite(servo_relay_pin, LOW);
-      client.publish("stue/blinds_error", "1");
+      client.publish("stue/blind_error", "1");
       break;
-  }
+  } 
 }
+
