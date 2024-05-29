@@ -17,17 +17,24 @@ IPAddress subnet(255, 255, 0, 0);
 
 PubSubClient client(espClient);
 
-bool motion = false;
-long lastMsg = 0;
-#define LEDPIN 2
-#define RELAYPIN 12
-#define SERVOPIN 13
+enum class states 
+{   down, 
+    closed, 
+    opened,
+    up,
+} blind_state; 
+
+long actuation_time = 0;
+unsigned long lastMsg_time = 0;
+#define ledPin 2
+#define servo_relay_pin 12
 
 Servo myservo;
-const int open_pos = 180;
-const int neutral_pos = 90;
+const int open_pos = 113;
+const int neutral_pos = 56;
 const int close_pos = 0;
-const int swing_time = 400;
+const int swing_time = 500;
+
 
 void blink_led(unsigned int, unsigned int);
 void setup_wifi();
@@ -36,15 +43,14 @@ void callback(char*, byte*, unsigned int);
 
 
 void setup() {
-  pinMode(LEDPIN, OUTPUT);
-  pinMode(RELAYPIN, OUTPUT);
-  pinMode(SERVOPIN, OUTPUT);
-  // pinMode(15, INPUT_PULLDOWN);
+  pinMode(ledPin, OUTPUT);
+  pinMode(servo_relay_pin, OUTPUT);
+  pinMode(12, OUTPUT);
   Serial.begin(115200);
   
   ESP32PWM::allocateTimer(0);
   myservo.setPeriodHertz(50);
-  myservo.attach(SERVOPIN);
+  myservo.attach(13);
   
   setup_wifi();
   ArduinoOTA.setPassword("admin"); 
@@ -54,31 +60,30 @@ void setup() {
 }
 
 void loop() {
-  if (!client.connected()) {
-    connect_mqttServer();
-  }
+  if (!client.connected()) {connect_mqttServer();}
   client.loop();
   ArduinoOTA.handle();
-  // if(digitalRead(15)){
-  //   motion = true;
-  //   client.publish("sove/motionsensor", "motion Detected!"); 
-  //   Serial.println("published motion!");
-  // }
-
-  // long now = millis();
-  // if (now - lastMsg > 1000) {
-  //   lastMsg = now;
-  // }
-  delay(200); 
+  unsigned long now = millis();
+ 
+  
+  if(now > actuation_time+lastMsg_time){
+    myservo.write(neutral_pos);
+    delay(swing_time);
+    digitalWrite(servo_relay_pin, LOW);
+  }
+    
+  if (lastMsg_time > millis()){
+    lastMsg_time = millis();
+  }
+  delay(100);   
 }
-
 
 
 void blink_led(unsigned int times, unsigned int duration){
   for (int i = 0; i < times; i++) {
-    digitalWrite(LEDPIN, HIGH);
+    digitalWrite(ledPin, HIGH);
     delay(duration);
-    digitalWrite(LEDPIN, LOW); 
+    digitalWrite(ledPin, LOW); 
     delay(200);
   }
 }
@@ -141,75 +146,106 @@ void connect_mqttServer() {
 
 //this function will be executed whenever there is data available on subscribed topics
 void callback(char* topic, byte* message, unsigned int length) {
+  // test range of servo easily
+
+  // int ass = map(intValue, 0, 100, 0, 180);
+  // digitalWrite(servo_relay_pin, HIGH);
+  // myservo.write(ass);
+  // delay(1000);
+  // myservo.write(neutral_pos);
+  // delay(swing_time);
+  // digitalWrite(servo_relay_pin, LOW);
+
+
   Serial.print("Message arrived on topic: ");
   Serial.print(topic);
   Serial.print(". Message: ");
   String messageTemp;
-  
+
   for (int i = 0; i < length; i++) {
     Serial.print((char)message[i]);
     messageTemp += (char)message[i];
   }
   Serial.println();
 
-  int intValue = messageTemp.toInt();
+  // Check if the message is a valid integer
+  bool isValidInteger = true;
+  for (int i = 0; i < messageTemp.length(); i++) {
+    if (!isDigit(messageTemp.charAt(i))) {
+      isValidInteger = false;
+      break;
+    }
+  }
 
+  if (!isValidInteger) {
+    blink_led(5, 300);
+    digitalWrite(servo_relay_pin, HIGH);
+    myservo.write(close_pos);
+    delay(100);
+    myservo.write(open_pos);
+    delay(100);
+    myservo.write(neutral_pos);
+    delay(swing_time);
+    digitalWrite(servo_relay_pin, LOW);
+    client.publish("sove/blind_error", "ERROR! Invalid input");
+    return;
+  }
+
+  int intValue = messageTemp.toInt();
   Serial.println(intValue);
+
   switch (intValue) {
     case 12:
       Serial.println("light on");
-      digitalWrite(LEDPIN, HIGH);
+      digitalWrite(ledPin, HIGH);
       client.publish("sove/light","light on");
       break;
 
     case 21:
       Serial.println("light off");
-      digitalWrite(LEDPIN, LOW);
+      digitalWrite(ledPin, LOW);
       client.publish("sove/light","light off");
       break;
 
-    case 25:
-      // Serial.println("open blinds");
+    case 25: //open blinds
       client.publish("sove/get_blind_pos","25");
-      digitalWrite(RELAYPIN, HIGH);
+      digitalWrite(servo_relay_pin, HIGH);
+      delay(500);
       myservo.write(open_pos);
-      delay(1500);
-      myservo.write(neutral_pos);
-      delay(swing_time);
-      digitalWrite(RELAYPIN, LOW);
+      actuation_time = 1500;
+      lastMsg_time = millis();
+      blind_state = states::opened;
       break;
 
-    case 1:
-      // Serial.println("close blinds");
+    case 1: //close blinds
       client.publish("sove/get_blind_pos","1");
-      digitalWrite(RELAYPIN, HIGH);
-      myservo.write(close_pos);
-      delay(1500);
-      myservo.write(neutral_pos);
+      digitalWrite(servo_relay_pin, HIGH);
       delay(swing_time);
-      digitalWrite(RELAYPIN, LOW);
+      myservo.write(close_pos);
+      actuation_time = 1500;
+      lastMsg_time = millis();
+      blind_state = states::closed;
       break;
 
-    case 100:
-      // Serial.println("blinds up");
-      client.publish("sove/get_blind_pos","1000");
-      digitalWrite(RELAYPIN, HIGH);
+    case 100: //blinds up
+      if(blind_state==states::up){break;}
+      client.publish("sove/get_blind_pos","100");
+      digitalWrite(servo_relay_pin, HIGH);
+      delay(500);
       myservo.write(open_pos);
-      delay(70000);
-      myservo.write(neutral_pos);
-      delay(swing_time);
-      digitalWrite(RELAYPIN, LOW);
+      actuation_time = 70000;
+      lastMsg_time = millis();
+      blind_state = states::up;
       break;
 
-    case 0:
-      // Serial.println("blinds up");
+    case 0: //blinds down
       client.publish("sove/get_blind_pos","0");
-      digitalWrite(RELAYPIN, HIGH);
+      digitalWrite(servo_relay_pin, HIGH);
+      delay(500);
       myservo.write(close_pos);
-      delay(70000);
-      myservo.write(neutral_pos);
-      delay(swing_time);
-      digitalWrite(RELAYPIN, LOW);
+      actuation_time = 70000;
+      lastMsg_time = millis();
+      blind_state = states::down;
       break;
 
 
@@ -217,15 +253,18 @@ void callback(char* topic, byte* message, unsigned int length) {
       Serial.println("error!");
       blink_led(5, 300);
       Serial.println("wrong value");
-      digitalWrite(RELAYPIN, HIGH);
+      digitalWrite(servo_relay_pin, HIGH);
+      delay(500);
       myservo.write(close_pos);
       delay(100);
       myservo.write(open_pos);
       delay(100);
       myservo.write(neutral_pos);
       delay(swing_time);
-      digitalWrite(RELAYPIN, LOW);
-      client.publish("sove/blinds_error", "1");
+      digitalWrite(servo_relay_pin, LOW);
+      client.publish("sove/blind_error", "ERROR!");
       break;
-  }
+  } 
+
 }
+

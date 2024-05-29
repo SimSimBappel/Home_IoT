@@ -30,9 +30,9 @@ unsigned long lastMsg_time = 0;
 #define servo_relay_pin 13
 
 Servo myservo;
-const int open_pos = 140;
-const int neutral_pos = 90;
-const int close_pos = 40;
+const int open_pos = 113;
+const int neutral_pos = 56;
+const int close_pos = 0;
 const int swing_time = 500;
 
 
@@ -147,18 +147,54 @@ void connect_mqttServer() {
 
 //this function will be executed whenever there is data available on subscribed topics
 void callback(char* topic, byte* message, unsigned int length) {
-  // Serial.print("Message arrived on topic: ");
-  // Serial.print(topic);
-  // Serial.print(". Message: ");
+  // test range of servo easily
+  // int ass = map(intValue, 0, 100, 0, 180);
+
+  // digitalWrite(servo_relay_pin, HIGH);
+  // myservo.write(ass);
+  // delay(1000);
+  // myservo.write(neutral_pos);
+  // delay(swing_time);
+  // digitalWrite(servo_relay_pin, LOW);
+
+  Serial.print("Message arrived on topic: ");
+  Serial.print(topic);
+  Serial.print(". Message: ");
   String messageTemp;
-  
+
   for (int i = 0; i < length; i++) {
-    // Serial.print((char)message[i]);
+    Serial.print((char)message[i]);
     messageTemp += (char)message[i];
   }
-  // Serial.println();
+  Serial.println();
+
+  // Check if the message is a valid integer
+  bool isValidInteger = true;
+  for (int i = 0; i < messageTemp.length(); i++) {
+    if (!isDigit(messageTemp.charAt(i))) {
+      isValidInteger = false;
+      break;
+    }
+  }
+
+  if (!isValidInteger) {
+    Serial.println("error!");
+    blink_led(5, 300);
+    Serial.println("wrong value");
+    digitalWrite(servo_relay_pin, HIGH);
+    myservo.write(close_pos);
+    delay(100);
+    myservo.write(open_pos);
+    delay(100);
+    myservo.write(neutral_pos);
+    delay(swing_time);
+    digitalWrite(servo_relay_pin, LOW);
+    client.publish("stue/blind_error", "ERROR! Invalid input");
+    return;
+  }
 
   int intValue = messageTemp.toInt();
+  Serial.println(intValue);
 
   switch (intValue) {
     case 12:
@@ -173,23 +209,17 @@ void callback(char* topic, byte* message, unsigned int length) {
       client.publish("stue/light","light off");
       break;
 
-    case 25:
-      // Serial.println("open blinds");
-      // client.publish("stue/get_blind_pos","25");
+    case 25: //open blinds
+      client.publish("stue/get_blind_pos","25");
       digitalWrite(servo_relay_pin, HIGH);
       delay(500);
       myservo.write(open_pos);
       actuation_time = 1500;
       lastMsg_time = millis();
       blind_state = states::opened;
-      // delay(1500);
-      // myservo.write(neutral_pos);
-      // delay(swing_time);
-      // digitalWrite(servo_relay_pin, LOW);
       break;
 
-    case 1:
-      // Serial.println("close blinds");
+    case 1: //close blinds
       client.publish("stue/get_blind_pos","1");
       digitalWrite(servo_relay_pin, HIGH);
       delay(swing_time);
@@ -197,14 +227,9 @@ void callback(char* topic, byte* message, unsigned int length) {
       actuation_time = 1500;
       lastMsg_time = millis();
       blind_state = states::closed;
-      // delay(1500);
-      // myservo.write(neutral_pos);
-      // delay(swing_time);
-      // digitalWrite(servo_relay_pin, LOW);
       break;
 
-    case 100:
-      // Serial.println("blinds up");
+    case 100: //blinds up
       if(blind_state==states::up){break;}
       client.publish("stue/get_blind_pos","100");
       digitalWrite(servo_relay_pin, HIGH);
@@ -213,14 +238,9 @@ void callback(char* topic, byte* message, unsigned int length) {
       actuation_time = 70000;
       lastMsg_time = millis();
       blind_state = states::up;
-      // delay(70000);
-      // myservo.write(neutral_pos);
-      // delay(swing_time);
-      // digitalWrite(servo_relay_pin, LOW);
       break;
 
-    case 0:
-      // Serial.println("blinds down");
+    case 0: //blinds down
       client.publish("stue/get_blind_pos","0");
       digitalWrite(servo_relay_pin, HIGH);
       delay(500);
@@ -228,10 +248,6 @@ void callback(char* topic, byte* message, unsigned int length) {
       actuation_time = 70000;
       lastMsg_time = millis();
       blind_state = states::down;
-      // delay(70000);
-      // myservo.write(neutral_pos);
-      // delay(swing_time);
-      // digitalWrite(servo_relay_pin, LOW);
       break;
 
 
@@ -248,8 +264,9 @@ void callback(char* topic, byte* message, unsigned int length) {
       myservo.write(neutral_pos);
       delay(swing_time);
       digitalWrite(servo_relay_pin, LOW);
-      client.publish("stue/blind_error", "1");
+      client.publish("stue/blind_error", "ERROR!");
       break;
   } 
+
 }
 
