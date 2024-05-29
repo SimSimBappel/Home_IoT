@@ -68,19 +68,10 @@ def get_user_input(logger):
 
 
 def on_message(client, userdata, msg):
-    global status1_received, status1_message, status2_received, status2_message
-
-    #test--
+    global status_received, status_message
     status_message = msg.payload.decode('utf-8')
-    print(f"Received on {msg.topic}: {status_message}")
-    #--
-
-    if msg.topic == 'stue/get_blind_pos':
-        status1_message = msg.payload.decode('utf-8')
-        status1_received = True
-    elif msg.topic == 'sove/get_blind_pos':
-        status2_message = msg.payload.decode('utf-8')
-        status2_received = True
+    status_received = True
+    print(f"Received: {status_message}, on:{msg.topic}")
     
 
 
@@ -100,16 +91,16 @@ def main():
     client.on_message = on_message
     client.connect('192.168.1.100', 1883)
 
-    global status1_received, status2_received, status1_message, status2_message
-    status1_received = False
-    status2_received = False
-    status1_message = ""
-    status2_message = ""
+    global status_received, status_message 
+    status_received = False
+    status_message = ""
 
     client.loop_start()
 
     client.subscribe('stue/get_blind_pos')
+    client.subscribe('stue/blind_error')
     client.subscribe('sove/get_blind_pos')
+    client.subscribe('stue/blind_error')
 
     topic, message = get_user_input(logger)
     open_blinds(logger, client, topic, message)
@@ -117,21 +108,18 @@ def main():
     start_time = time.time()
 
 
-    while (not status1_received or not status2_received) and (time.time() - start_time) < 10:
+    while not status_received and (time.time() - start_time) < 10:
         time.sleep(0.1)
 
     client.loop_stop()
 
-    if status1_received and status2_received:
-        if status1_message == message and status2_message == message:
-            logger.info("Both devices returned success")
+    if status_received:
+        if status_message == message:
+            logger.info("Device returned successfully")
         else:
-            logger.warning(f"Mismatched values! Should be: {message}, got from livingroom: {status1_message}, from bedroom: {status2_message}")
+            logger.warning(f"Mismatched values! Should be: {message}, got {status_message}")
     else:
-        if not status1_received:
-            logger.warning("No response from livingroom within 5 seconds")
-        if not status2_received:
-            logger.warning("No response from bedroom within 5 seconds")
+        logger.error(f"No reply from topic: {topic}")
 
 
 if __name__ == "__main__":
