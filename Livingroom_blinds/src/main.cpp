@@ -147,16 +147,6 @@ void connect_mqttServer() {
 
 //this function will be executed whenever there is data available on subscribed topics
 void callback(char* topic, byte* message, unsigned int length) {
-  // test range of servo easily
-  // int ass = map(intValue, 0, 100, 0, 180);
-
-  // digitalWrite(servo_relay_pin, HIGH);
-  // myservo.write(ass);
-  // delay(1000);
-  // myservo.write(neutral_pos);
-  // delay(swing_time);
-  // digitalWrite(servo_relay_pin, LOW);
-
   Serial.print("Message arrived on topic: ");
   Serial.print(topic);
   Serial.print(". Message: ");
@@ -195,6 +185,16 @@ void callback(char* topic, byte* message, unsigned int length) {
 
   int intValue = messageTemp.toInt();
   Serial.println(intValue);
+
+  // test range of servo easily
+  // client.publish("stue/get_blind_pos", String(intValue).c_str());
+  // digitalWrite(servo_relay_pin, HIGH);
+  // myservo.write(ass);
+  // delay(1000);
+  // myservo.write(neutral_pos);
+  // delay(swing_time);
+  // digitalWrite(servo_relay_pin, LOW);
+
 
   switch (intValue) {
     case 12:
