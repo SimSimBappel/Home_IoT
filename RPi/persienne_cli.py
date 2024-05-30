@@ -46,7 +46,7 @@ def open_blinds(logger, client, topic, message):
 def get_user_input(logger):
     print("Select a topic to publish to:")
     print("1. stue/set_blind_pos")
-    print("2. bedroom/set_blind_pos")
+    print("2. sove/set_blind_pos")
     print("Else; enter custom topic")
 
     selection = input("Enter the number corresponding to your choice (or 4 for custom): ")
@@ -100,7 +100,7 @@ def main():
     client.subscribe('stue/get_blind_pos')
     client.subscribe('stue/blind_error')
     client.subscribe('sove/get_blind_pos')
-    client.subscribe('stue/blind_error')
+    client.subscribe('sove/blind_error')
 
     topic, message = get_user_input(logger)
     open_blinds(logger, client, topic, message)
@@ -117,7 +117,7 @@ def main():
         if status_message == message:
             logger.info("Device returned successfully")
         else:
-            logger.warning(f"Mismatched values! Should be: {message}, got {status_message}")
+            logger.warning(f"Mismatched values! Should be: {message}, got: {status_message}")
     else:
         logger.error(f"No reply from topic: {topic}")
 
